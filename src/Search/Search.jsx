@@ -3,6 +3,15 @@ import styled from "styled-components";
 import currencies from "./currency";
 import useEventListener from "./useListener";
 
+//TODO:
+//# change input for everyfing for spans and inputs
+//# spans will be filter names, input values
+//# butt all that wihtout frame - and fame will be global for section
+//# filter names x for close
+//# backspace deletes content from input, and the next delete filter name
+//# after add filter from actualfilter - create next input and reset actual
+//# after fill actual create div from value for filter name and create next input
+
 const notices = [
   "type ISIN, currency, price ... - activate search filter",
   "press arrow keys <-- or --> to activate filter start with and end with",
@@ -11,6 +20,8 @@ const notices = [
 ];
 
 const operator = ["+", "-", "|", "AND", "OR", "NOT"];
+
+const keys = [];
 
 const data = [
   "ISIN",
@@ -34,7 +45,23 @@ const useDetect = () => {
 
 const Tips = ({ tip }) => <span></span>;
 
+const Tags = styled.div`
+  display: flex;
+
+  > div,
+  > input {
+    display: inline-flex;
+    width: fit-content;
+  }
+  > div {
+    border-radius: 5px;
+    border: 1px solid #ccc;
+  }
+`;
+
 const Notice = styled.div``;
+
+const Filter = styled.div``;
 
 const DropDownWrapper = styled.div`
   position: absolute;
@@ -80,26 +107,14 @@ const DropDown = ({ values, selected }) => {
 
 const SearchWrapper = styled.div`
   position: relative;
+  border: 1px solid #ccc;
   input {
     width: 90vw;
     height: 30px;
+    outline: none;
+    border: none;
   }
 `;
-
-function countReducer(state, action) {
-  switch (action.type) {
-    case "Tab":
-      return state + 1;
-    case "Enter":
-      return state - 1;
-    case "Escape":
-      return state - 1;
-    case "ArrowDown":
-      return state - 1;
-    case "ArrowUp":
-      return state - 1;
-  }
-}
 
 let no = 0;
 
@@ -108,8 +123,8 @@ export default () => {
   const [filteredValues, fillFilteredValues] = useState([]);
   // const [selectedNo, setSelectedNo] = useState(0);
   const [selected, setSelected] = useState(data[0]);
-  const [count, dispatch] = useReducer(countReducer, 0);
-  const [searchFilters, setSearchFilters] = useState([]);
+  const [searchFilters, updateSearchFilters] = useState([]);
+  const [actualFilter, setActualFilter] = useState(null);
 
   useEffect(() => {
     // searchRef.current.focus();
@@ -126,6 +141,7 @@ export default () => {
 
   //THIS works only for set filter
   const handleKey = (e) => {
+    console.log(e.code);
     // ctrlKey: false
     // shiftKey: true
     // altKey: false
@@ -134,7 +150,6 @@ export default () => {
     // isComposing: false
     // charCode: 13
     // keyCode: 13
-    console.log(e.code);
     // dispatch({ type: e.nativeEvent.code });
     switch (e.code) {
       case "+":
@@ -146,20 +161,36 @@ export default () => {
       case "-":
       case "*":
         return;
-
       case "Tab":
-        no = 0;
-        searchRef.current.value = `${filteredValues[no]}: `;
-        setSelected(null);
-        fillFilteredValues([]);
-        return;
+        e.preventDefault();
       case "Enter":
-        // no = 0;
-        // searchRef.current.value = `${filteredValues[no]}: `;
-        // setSelected(null);
-        // fillFilteredValues([]);
-        //ACTION: apply filter
+        no = 0;
+        if (actualFilter) {
+          updateSearchFilters([
+            ...searchFilters,
+            {
+              //TODO: remove actual filter value
+              [actualFilter]: searchRef.current.value
+            }
+          ]);
+          searchRef.current.value = searchRef.current.value + "; ";
+          setActualFilter(null);
+        } else {
+          searchRef.current.value = `${filteredValues[no]}: `;
+          setActualFilter(filteredValues[no]);
+          setSelected(null);
+          fillFilteredValues([]);
+          searchRef.current.focus();
+        }
         return;
+      // case "Tab":
+      // e.preventDefault();
+      // no = 0;
+      // searchRef.current.value = `${filteredValues[no]}: `;
+      // setSelected(null);
+      // fillFilteredValues([]);
+      //ACTION: apply filter
+      // return;
       // case "Escape":
       //   return state - 1;
       case "ArrowUp":
@@ -170,22 +201,41 @@ export default () => {
         no = no === filteredValues.length ? 0 : no + 1;
         setSelected(filteredValues[no]);
         return;
+      case "Backspace":
+        return;
+      case "Escape":
+        //TODO: set abort flag = true till next command
+        setSelected(null);
+        fillFilteredValues([]);
+        searchRef.current.focus();
+        return;
     }
-    console.log(no);
+    // console.log(no);
   };
 
   useEventListener("keydown", handleKey);
 
   useEffect(() => {
-    console.log("selected", selected);
-    console.log("no", no);
+    // console.log("selected", selected);
+    // console.log("no", no);
   }, [selected]);
 
   return (
     <SearchWrapper>
-      <input type="text" ref={searchRef} onChange={handleChange} />
+      <Tags>
+        {searchFilters.map((value) => {
+          // const {key, val} = Objec
+          const [key, val] = Object.entries(value);
+          return (
+            <Filter>
+              {key}: {val}
+            </Filter>
+          );
+        })}
+        <input type="text" ref={searchRef} onChange={handleChange} />
+      </Tags>
       {notices.length && <Notice />}
-      {filteredValues.length && (
+      {filteredValues.length > 0 && (
         <DropDown values={filteredValues} selected={selected} />
       )}
     </SearchWrapper>
